@@ -15,7 +15,10 @@ export async function signUp(formData: FormData) {
   const password = formData.get('password') as string;
 
   // Manual Check if email exists
-  const { data: existing } = await supabase.from('users').select('id').eq('email', email).single();
+  const { data: existing, error: checkError } = await supabase.from('users').select('id').eq('email', email).single();
+  if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is 'no rows found' which is fine
+    console.error('Check existing user error:', checkError);
+  }
   if (existing) throw new Error('Email already registered.');
 
   const role = email.includes('admin') ? 'admin' : 'member';
@@ -27,7 +30,10 @@ export async function signUp(formData: FormData) {
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Sign up error:', error);
+    throw new Error(error.message);
+  }
 
   // Set highly secure HTTP-Only session cookie
   const cookieStore = await cookies();
@@ -53,7 +59,10 @@ export async function signIn(formData: FormData) {
     .eq('email', email)
     .single();
 
-  if (error || !user) throw new Error('User not found.');
+  if (error || !user) {
+    console.error('Sign in error:', error || 'User not found');
+    throw new Error('User not found.');
+  }
   if (user.password !== password) throw new Error('Invalid credentials.');
 
   // Set highly secure HTTP-Only session cookie
